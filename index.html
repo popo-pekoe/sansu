@@ -56,14 +56,6 @@
     .bounce-slow {
       animation: bounce-slow 2s infinite ease-in-out;
     }
-    @keyframes pulse-ring {
-      0% { transform: scale(0.95); opacity: 0.8; }
-      50% { transform: scale(1.1); opacity: 1; }
-      100% { transform: scale(0.95); opacity: 0.8; }
-    }
-    .pulse-ring {
-      animation: pulse-ring 1.5s infinite ease-in-out;
-    }
     
     /* 煙や雲のゆらゆら */
     @keyframes float-cloud {
@@ -91,15 +83,15 @@
   <!-- ゲームメッセージ -->
   <div class="w-full max-w-md bg-white/90 border-2 border-amber-200 rounded-2xl p-2.5 shadow-sm text-center mb-1 relative">
     <p id="guideText" class="text-base md:text-lg font-bold text-amber-900 leading-tight">
-      ビー玉を なんこ おとすか えらんでね！👇
+      スタートボタンを おしてね！👇
     </p>
     <div id="handGuide" class="absolute right-4 -bottom-3 text-2xl pointer-events-none hidden transition-all duration-500">
       👆
     </div>
   </div>
 
-  <!-- ゲームメインエリア (アスペクト比を考慮したコンテナ) -->
-  <div class="w-full max-w-md aspect-[3/4] relative flex-grow flex items-center justify-center py-2">
+  <!-- ゲームメインエリア：高さが0に潰れないよう最小高さを確実にCSSで指定 -->
+  <div class="w-full max-w-md aspect-[3/4] min-h-[420px] relative flex-grow flex items-center justify-center py-2">
     <!-- 外側の木枠 -->
     <div class="wood-frame w-full h-full rounded-3xl p-3 md:p-4 flex flex-col relative overflow-hidden">
       <!-- 内側のボード板 -->
@@ -125,19 +117,16 @@
         <!-- UI要素レイヤー (Canvasの上に重ねる) -->
         <div class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2">
           
-          <!-- 上部：ビー玉投入セレクトエリア（ゲーム開始前のみ表示） -->
+          <!-- 上部：ビー玉投入セレクトエリア -->
           <div id="startScreen" class="pointer-events-auto absolute inset-0 bg-amber-900/40 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center p-4 z-30 transition-all duration-500">
-            <div class="bg-white/95 rounded-2xl p-5 shadow-2xl border-4 border-amber-400 text-center max-w-[90%] transform scale-100 transition-transform">
-              <p class="text-lg md:text-xl font-bold text-amber-900 mb-3">🔮 ビー玉を なんこ おとす？</p>
-              <div class="grid grid-cols-3 gap-2.5 mb-4">
-                <button onclick="selectMarbleCount(5)" class="num-select-btn bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-amber-900 font-bold text-xl py-2 rounded-xl active:scale-95 transition-all">5こ</button>
-                <button onclick="selectMarbleCount(6)" class="num-select-btn bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-amber-900 font-bold text-xl py-2 rounded-xl active:scale-95 transition-all">6こ</button>
-                <button onclick="selectMarbleCount(7)" class="num-select-btn bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-amber-900 font-bold text-xl py-2 rounded-xl active:scale-95 transition-all">7こ</button>
-                <button onclick="selectMarbleCount(8)" class="num-select-btn bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-amber-900 font-bold text-xl py-2 rounded-xl active:scale-95 transition-all">8こ</button>
-                <button onclick="selectMarbleCount(9)" class="num-select-btn bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-amber-900 font-bold text-xl py-2 rounded-xl active:scale-95 transition-all">9こ</button>
-                <button onclick="selectMarbleCount(10)" class="num-select-btn bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-amber-900 font-bold text-xl py-2 rounded-xl active:scale-95 transition-all">10こ</button>
-              </div>
-              <p class="text-xs text-amber-700 font-semibold">ボタンをえらぶと ビー玉が おちてくるよ！</p>
+            <div class="bg-white/95 rounded-2xl p-6 shadow-2xl border-4 border-amber-400 text-center max-w-[90%] transform scale-100 transition-transform">
+              <p class="text-xl md:text-2xl font-black text-amber-900 mb-4">🔮 ビー玉を おとそう！</p>
+              
+              <button onclick="startRandomMarbles()" class="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-black text-2xl px-12 py-4 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all animate-bounce">
+                スタート！ 🔮
+              </button>
+              
+              <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
             </div>
           </div>
 
@@ -248,9 +237,8 @@
       const parent = canvas.parentElement;
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
+      initBoardLayout(); 
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
 
     // --- パーティクルエフェクト ---
     let particles = [];
@@ -295,7 +283,7 @@
     let inputRight = null;
     let inputTotal = null;
 
-    // おもちゃのレイアウト設定 (比率で制御)
+    // おもちゃのレイアウト設定
     let leftCount = 0;
     let rightCount = 0;
 
@@ -316,7 +304,7 @@
       const w = canvas.width;
       const h = canvas.height;
 
-      // ピンは屋根の上部（y: 0.08 〜 0.28）に配置
+      // ピンは屋根の上部に配置
       const rows = 4;
       const startY = h * 0.08;
       const endY = h * 0.26;
@@ -335,7 +323,7 @@
 
       // 左右の部屋の物理仕切り
       stopper.width = w;
-      stopper.y = h * 0.85; // 下から15%
+      stopper.y = h * 0.85; 
       stopper.height = h * 0.02;
       stopper.currentX = 0;
       stopper.targetX = 0;
@@ -349,10 +337,10 @@
         this.y = y;
         this.vx = (Math.random() - 0.5) * 2;
         this.vy = 0;
-        this.r = canvas.width * 0.026; // サイズ自動調整
+        this.r = canvas.height * 0.047 * 0.45; 
         this.color = '#e2e8f0'; 
         this.bounce = 0.45; 
-        this.status = 'falling'; // falling, slide_left, slide_right, stack_left, stack_right, aligned_bottom
+        this.status = 'falling'; 
         this.alignedIndex = -1;
         this.hue = Math.random() * 360; 
       }
@@ -362,13 +350,11 @@
         const h = canvas.height;
         const gravity = 0.25;
 
-        // --- 1. 落下状態 ---
         if (this.status === 'falling') {
           this.vy += gravity;
           this.x += this.vx;
           this.y += this.vy;
 
-          // 左右の壁バウンド
           if (this.x - this.r < w * 0.04) {
             this.x = w * 0.04 + this.r;
             this.vx = -this.vx * this.bounce;
@@ -378,7 +364,6 @@
             this.vx = -this.vx * this.bounce;
           }
 
-          // ピンとの衝突
           pins.forEach(pin => {
             const dx = this.x - pin.x;
             const dy = this.y - pin.y;
@@ -391,12 +376,9 @@
               const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
               this.vx = Math.cos(angle) * speed * this.bounce + (Math.random() - 0.5) * 0.5;
               this.vy = Math.sin(angle) * speed * this.bounce;
-
-              createParticle(pin.x, pin.y, '#f59e0b', 'star');
             }
           });
 
-          // 三角屋根との衝突判定
           const roofPeakX = w * 0.5;
           const roofPeakY = h * 0.31;
           const roofLeftEndX = w * 0.28;
@@ -404,7 +386,6 @@
           const roofRightEndX = w * 0.72;
           const roofRightEndY = h * 0.37;
 
-          // 左斜面判定
           if (this.x >= roofLeftEndX && this.x <= roofPeakX) {
             const ratio = (this.x - roofLeftEndX) / (roofPeakX - roofLeftEndX);
             const lineY = roofLeftEndY + ratio * (roofPeakY - roofLeftEndY);
@@ -414,7 +395,6 @@
               this.vy = 1;
             }
           }
-          // 右斜面判定
           else if (this.x > roofPeakX && this.x <= roofRightEndX) {
             const ratio = (this.x - roofPeakX) / (roofRightEndX - roofPeakX);
             const lineY = roofPeakY + ratio * (roofRightEndY - roofPeakY);
@@ -425,7 +405,6 @@
             }
           }
 
-          // 直接左右の通路に入る場合の判定
           if (this.y > h * 0.37) {
             if (this.x < w * 0.28) {
               this.status = 'stack_left';
@@ -443,7 +422,6 @@
           }
         }
 
-        // --- 2. 屋根滑り中（左） ---
         else if (this.status === 'slide_left') {
           this.x += this.vx;
           this.y += 0.8;
@@ -452,7 +430,6 @@
           }
         }
 
-        // --- 3. 屋根滑り中（右） ---
         else if (this.status === 'slide_right') {
           this.x += this.vx;
           this.y += 0.8;
@@ -461,13 +438,19 @@
           }
         }
 
-        // --- 4. 左側の筒でのスタック処理 ---
         else if (this.status === 'stack_left') {
           const slotX = w * 0.22; 
           const index = marbles.filter(m => m.status === 'stack_left' && m.y > this.y).length;
           
-          const bottomBoundary = stopper.isOpen ? h * 1.1 : stopper.y;
-          const targetY = bottomBoundary - (index * this.r * 1.95) - this.r - 2;
+          let targetY;
+          if (stopper.isOpen) {
+            targetY = h * 1.1; 
+          } else {
+            const sideHeight = h * 0.47;
+            const startY = h * 0.38;
+            const stepY = sideHeight / 10;
+            targetY = startY + (9.5 - index) * stepY;
+          }
 
           this.x += (slotX - this.x) * 0.2;
           if (this.y < targetY) {
@@ -484,13 +467,19 @@
           }
         }
 
-        // --- 5. 右側の筒でのスタック処理 ---
         else if (this.status === 'stack_right') {
           const slotX = w * 0.78; 
           const index = marbles.filter(m => m.status === 'stack_right' && m.y > this.y).length;
           
-          const bottomBoundary = stopper.isOpen ? h * 1.1 : stopper.y;
-          const targetY = bottomBoundary - (index * this.r * 1.95) - this.r - 2;
+          let targetY;
+          if (stopper.isOpen) {
+            targetY = h * 1.1; 
+          } else {
+            const sideHeight = h * 0.47;
+            const startY = h * 0.38;
+            const stepY = sideHeight / 10;
+            targetY = startY + (9.5 - index) * stepY;
+          }
 
           this.x += (slotX - this.x) * 0.2;
           if (this.y < targetY) {
@@ -507,7 +496,6 @@
           }
         }
 
-        // --- 6. 仕切り外れ後の落下 ---
         else if (this.status === 'dropping_bottom') {
           this.vy += gravity;
           this.y += this.vy;
@@ -524,7 +512,6 @@
           }
         }
 
-        // --- 7. 下部トレイでの等間隔整列 ---
         else if (this.status === 'aligned_bottom') {
           const trayStartX = w * 0.14;
           const trayEndX = w * 0.86;
@@ -599,12 +586,18 @@
     }
     document.getElementById('resetBtn').addEventListener('click', resetGame);
 
+    // 1〜10個のビー玉をランダムに決定して開始する処理
+    function startRandomMarbles() {
+      const randomCount = Math.floor(Math.random() * 10) + 1;
+      selectMarbleCount(randomCount);
+    }
+
     // ビー玉投入選択
     function selectMarbleCount(count) {
       targetTotalMarbles = count;
       currentState = STATE.DROP;
       
-      // スタート画面をフェードアウトさせて物理的にも完全に非表示（display: none）にする
+      // スタート画面をフェードアウトさせて物理的にも完全に非表示にする
       const startScreen = document.getElementById('startScreen');
       startScreen.classList.remove('pointer-events-auto');
       startScreen.classList.add('opacity-0', 'pointer-events-none');
@@ -638,7 +631,7 @@
       hand.classList.add('hidden');
 
       if (currentState === STATE.SELECT) {
-        guide.innerHTML = "🔮 ビー玉を なんこ おとすか えらんでね！👇";
+        guide.innerHTML = "🔮 スタートボタンを おしてね！👇";
       } else if (currentState === STATE.DROP) {
         guide.innerHTML = "🍭 コロコロ... どっちに おちるかな？";
       } else if (currentState === STATE.INPUT_HALVES) {
@@ -653,7 +646,7 @@
         guide.innerHTML = "🌈 ザザーッ！ ビー玉が 下に ならぶよ！";
         document.getElementById('stopperTouchGuide').classList.add('hidden');
       } else if (currentState === STATE.INPUT_TOTAL) {
-        guide.innerHTML = "✏️ ぜんぶで なんこ になったかな？<br>いちばん <span class='text-purple-600 font-bold'>うえの しかく</span> に 合計を いれてね！";
+        guide.innerHTML = "✏️ ぜんぶで なんこ になったかな？<br>いちばん <span class='text-purple-600 font-bold'>うえの むらさきの しかく（？マーク）</span> を タップして ね！";
         hand.classList.remove('hidden');
         hand.style.left = "50%";
         hand.style.top = "38%";
@@ -664,7 +657,6 @@
 
     // --- テンキー（キーパッド）操作 ---
     function openKeypad(target) {
-      // 適切なステートのときのみキーパッドを開ける
       if (currentState === STATE.INPUT_HALVES && (target === 'left' || target === 'right')) {
         activeKeypadTarget = target;
         document.getElementById('keypadTitle').innerHTML = target === 'left' ? "🍋 ひだりの部屋 の ビー玉の数" : "🐳 みぎの部屋 の ビー玉の数";
@@ -777,6 +769,18 @@
         currentState = STATE.RELEASING;
         updateGuideMessage();
         createParticle(canvas.width * 0.5, stopper.y, '#ec4899', 'smoke');
+        
+        // ビー玉の落下判定漏れを防ぐセーフティタイマー（1.5秒後に強制的に整列して合計入力モードへ移行）
+        setTimeout(() => {
+          if (currentState === STATE.RELEASING) {
+            marbles.forEach((marble, idx) => {
+              marble.status = 'aligned_bottom';
+              marble.alignedIndex = idx;
+            });
+            currentState = STATE.INPUT_TOTAL;
+            updateGuideMessage();
+          }
+        }, 1500);
       }
     });
 
@@ -785,6 +789,16 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const w = canvas.width;
       const h = canvas.height;
+
+      // 【修正】自己修復：もし画面のレイアウトサイズが突然確定し、Canvasのサイズが不一致になった場合は自動修正する
+      const parent = canvas.parentElement;
+      if (parent && (canvas.width !== parent.clientWidth || canvas.height !== parent.clientHeight)) {
+        if (parent.clientWidth > 10 && parent.clientHeight > 10) {
+          canvas.width = parent.clientWidth;
+          canvas.height = parent.clientHeight;
+          initBoardLayout();
+        }
+      }
 
       drawBoardBackground(w, h);
 
@@ -1014,8 +1028,26 @@
       }
     }
 
-    initBoardLayout();
-    animate();
+    // 【最重要】最初のロードおよび起動監視
+    function init() {
+      // 親の高さがまだ未決定（0など）の場合はループで少し待ってリトライする
+      const parent = canvas.parentElement;
+      if (!parent || parent.clientWidth <= 10 || parent.clientHeight <= 10) {
+        setTimeout(init, 10);
+        return;
+      }
+      
+      resizeCanvas();
+      animate(); // 描画ループ開始
+    }
+
+    // 複数のライフサイクルイベントにバインド
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      init();
+    } else {
+      window.addEventListener('DOMContentLoaded', init);
+      window.addEventListener('load', init);
+    }
   </script>
 </body>
 </html>
