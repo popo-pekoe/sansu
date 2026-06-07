@@ -116,7 +116,7 @@
     <!-- 外側の木枠 -->
     <div class="wood-frame w-full h-full rounded-3xl p-3 md:p-4 flex flex-col relative overflow-hidden">
       <!-- 内側のボード板 -->
-      <div class="wood-board w-full h-full rounded-2xl relative overflow-hidden flex flex-col border border-amber-900/10">
+      <div id="woodBoardContainer" class="wood-board w-full h-full rounded-2xl relative overflow-hidden flex flex-col border border-amber-900/10">
         
         <!-- 背景の空、気球、雲の描画(CSS) -->
         <div class="absolute inset-0 opacity-15 pointer-events-none overflow-hidden">
@@ -134,6 +134,9 @@
 
         <!-- 物理アニメーション用キャンバス -->
         <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-10"></canvas>
+
+        <!-- 盤面観察用の透明シールド（タップでもどるため。z-50に引き上げて確実に全体イベントを検知、bg-white/[0.01]でタッチ抜け防止） -->
+        <div id="observeShield" onclick="restoreOverlayAfterObserving()" class="absolute inset-0 z-50 bg-white/[0.01] cursor-pointer hidden pointer-events-auto"></div>
 
         <!-- UI要素レイヤー -->
         <div class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2">
@@ -156,7 +159,7 @@
             <!-- 家の屋根の装飾（CSSで表現） -->
             <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[45px] border-r-[45px] border-b-[16px] border-l-transparent border-r-transparent border-b-amber-800"></div>
             
-            <!-- 上部：合計カード（?マーク）【修正：確実に反応する直接onclickを設定】 -->
+            <!-- 上部：合計カード（?マーク） -->
             <div class="flex justify-center mt-2">
               <div id="boxTotal" onclick="openKeypad('total')" class="w-12 h-12 md:w-14 md:h-14 num-box-purple rounded-xl flex items-center justify-center text-2xl md:text-3xl font-black text-purple-700 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30">
                 <span id="valTotal">?</span>
@@ -172,7 +175,7 @@
               </svg>
             </div>
 
-            <!-- 下部：左右のカード【修正：確実に反応する直接onclickを設定】 -->
+            <!-- 下部：左右のカード -->
             <div class="flex justify-between px-1 mb-2">
               <!-- 左 -->
               <div id="boxLeft" onclick="openKeypad('left')" class="w-11 h-11 md:w-12 md:h-12 num-box-yellow rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-amber-800 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30">
@@ -198,21 +201,34 @@
               ここを タップ！ 👇
             </div>
             <!-- ピンク of バー本体 -->
-            <div class="w-full h-full bg-pink-500/20 active:bg-pink-500/40 transition-colors"></div>
+            <div class="wood-stopper w-full h-full bg-pink-500/20 active:bg-pink-500/40 transition-colors"></div>
           </div>
 
         </div>
 
-        <!-- 祝・クリア！の特大オーバーレイ -->
+        <!-- 祝・クリア！の特大オーバーレイ (transitionアニメーションを安定化させるため、初期状態は opacity-0 pointer-events-none を付与) -->
         <div id="clearOverlay" class="absolute inset-0 z-40 bg-amber-900/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-700">
           <div class="bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-75 transition-transform duration-700" id="clearModal">
             <span class="text-6xl md:text-7xl block animate-bounce mb-3">🎉 💮 🎉</span>
             <h2 class="text-2xl md:text-3xl font-black text-green-600 mb-1">できた！すごーい！</h2>
             <p id="mathSummaryText" class="text-xl md:text-2xl font-bold text-amber-800 mb-4 bg-amber-50 py-2 rounded-xl">4 + 3 = 7</p>
-            <button onclick="resetGame()" class="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white font-black text-lg md:text-xl px-8 py-3 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all">
-              もういちど あそぶ！ 🔄
-            </button>
+            
+            <!-- 「ばんめんをみる」ボタンと「もういちどあそぶ」ボタンのコンボ -->
+            <div class="flex flex-col gap-2.5">
+              <button onclick="hideOverlayToObserve()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-400 font-bold text-base py-2.5 px-6 rounded-full shadow transition-all active:scale-95 flex items-center justify-center gap-1.5 mx-auto pointer-events-auto">
+                <span>🔍</span><span>ばんめんをみる</span>
+              </button>
+              
+              <button onclick="resetGame()" class="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white font-black text-lg md:text-xl px-8 py-3 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all pointer-events-auto">
+                もういちど あそぶ！ 🔄
+              </button>
+            </div>
           </div>
+        </div>
+
+        <!-- 盤面確認中の透かしガイダンスバー -->
+        <div id="observeBanner" class="absolute top-2 left-1/2 -translate-x-1/2 bg-rose-500/90 border border-white text-white font-black text-xs md:text-sm px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none opacity-0 transition-opacity duration-300 text-center">
+          👇 画面のどこかを タップすると、ボタンが もどるよ！
         </div>
 
       </div>
@@ -248,41 +264,8 @@
     木のおもちゃを スマホやタブレットで再現しました
   </footer>
 
-  <!-- 2D 物理演算 & ゲーム進行 JS -->
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-
-    // 画面アスペクト比固定 (3:4)
-    function resizeCanvas() {
-      const parent = canvas.parentElement;
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
-      initBoardLayout(); 
-    }
-
-    // --- パーティクルエフェクト ---
-    let particles = [];
-    function createParticle(x, y, color, type = 'star') {
-      const pCount = type === 'smoke' ? 3 : 10;
-      for (let i = 0; i < pCount; i++) {
-        particles.push({
-          x: x,
-          y: y,
-          vx: (Math.random() - 0.5) * (type === 'smoke' ? 2 : 6),
-          vy: (Math.random() - 0.5) * (type === 'smoke' ? 2 : 6) - (type === 'smoke' ? 1 : 2),
-          r: Math.random() * (type === 'smoke' ? 8 : 4) + 2,
-          color: color,
-          alpha: 1,
-          decay: Math.random() * 0.02 + 0.015,
-          type: type,
-          angle: Math.random() * Math.PI * 2,
-          spin: (Math.random() - 0.5) * 0.1
-        });
-      }
-    }
-
-    // --- ゲームのステート管理 ---
+    // --- グローバル変数・定数の定義 (起動時の参照エラーを防ぐためにトップに配置) ---
     const STATE = {
       SELECT: 'select',            // 球数選択
       DROP: 'drop',                // 上から落下
@@ -293,10 +276,12 @@
       COMPLETE: 'complete'         // お祝い
     };
 
+    let audioCtx = null;
     let currentState = STATE.SELECT;
     let targetTotalMarbles = 0; // ユーザーが指定した球数
     let marbles = [];
     let pins = [];
+    let particles = [];
     let activeKeypadTarget = null; // 'left', 'right', 'total'
 
     // 入力値
@@ -318,6 +303,108 @@
       currentX: 0,
       isOpen: false
     };
+
+    let isObservingMode = false;
+    let lastSoundTime = 0; // 【新】バウンドSEの連続再生制限（デバウンス）用タイムスタンプ
+    let stopperOpenTime = 0; // 【新】ピンクバーを外したときのタイムスタンプ
+
+    // --- Web Audio API を使った木材の打撃音生成システム ---
+    function playWoodSound(volume = 1) {
+      try {
+        // 【新】前回音が鳴ってから0.25秒（250ms）経っていない場合は再生をスキップ
+        const now = Date.now();
+        if (now - lastSoundTime < 250) {
+          return;
+        }
+        lastSoundTime = now;
+
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.type = 'triangle';
+        const baseFreq = 260 + Math.random() * 60; 
+        osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.06);
+        
+        gainNode.gain.setValueAtTime(volume * 0.12, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {
+        console.log("Audio Error", e);
+      }
+    }
+
+    // 【新：強制ウッド音】デバウンス制限を無視して、落下・整列のタイミングなどで強制的に音を出すシステム
+    function playWoodSoundForced(volume = 1) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'triangle';
+        const baseFreq = 220 + Math.random() * 40; 
+        osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime + 0.05);
+        
+        gainNode.gain.setValueAtTime(volume * 0.15, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.07);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.09);
+      } catch (e) {}
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 画面アスペクト比固定 (3:4)
+    function resizeCanvas() {
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+        initBoardLayout(); 
+      }
+    }
+
+    // --- パーティクルエフェクト ---
+    function createParticle(x, y, color, type = 'star') {
+      const pCount = type === 'smoke' ? 3 : 10;
+      for (let i = 0; i < pCount; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * (type === 'smoke' ? 2 : 6),
+          vy: (Math.random() - 0.5) * (type === 'smoke' ? 2 : 6) - (type === 'smoke' ? 1 : 2),
+          r: Math.random() * (type === 'smoke' ? 8 : 4) + 2,
+          color: color,
+          alpha: 1,
+          decay: Math.random() * 0.02 + 0.015,
+          type: type,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.1
+        });
+      }
+    }
 
     // ピンの配置の初期化
     function initBoardLayout() {
@@ -364,6 +451,8 @@
         this.status = 'falling'; 
         this.alignedIndex = -1;
         this.hue = Math.random() * 360; 
+        this.releaseDelay = -1; // 【新】仕切りバーが引かれた後の、各ビー玉ごとの時差落下開始ディレイ(ms)
+        this.hasPlayedBottomSound = false; // 重複発音防止フラグ
       }
 
       update() {
@@ -379,10 +468,12 @@
           if (this.x - this.r < w * 0.04) {
             this.x = w * 0.04 + this.r;
             this.vx = -this.vx * this.bounce;
+            playWoodSound(0.5); 
           }
           if (this.x + this.r > w * 0.96) {
             this.x = w * 0.96 - this.r;
             this.vx = -this.vx * this.bounce;
+            playWoodSound(0.5); 
           }
 
           pins.forEach(pin => {
@@ -397,6 +488,8 @@
               const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
               this.vx = Math.cos(angle) * speed * this.bounce + (Math.random() - 0.5) * 0.5;
               this.vy = Math.sin(angle) * speed * this.bounce;
+              
+              playWoodSound(0.8); 
             }
           });
 
@@ -414,6 +507,7 @@
               this.status = 'slide_left';
               this.vx = -2.5; 
               this.vy = 1;
+              playWoodSound(0.4); 
             }
           }
           else if (this.x > roofPeakX && this.x <= roofRightEndX) {
@@ -423,6 +517,7 @@
               this.status = 'slide_right';
               this.vx = 2.5; 
               this.vy = 1;
+              playWoodSound(0.4); 
             }
           }
 
@@ -459,12 +554,15 @@
           }
         }
 
+        // 【新：時差落下トリガー】左右のスタック時に、仕切りバーがオープンかつディレイ時間が経過したかを個別に判定する
         else if (this.status === 'stack_left') {
           const slotX = w * 0.22; 
           const index = marbles.filter(m => m.status === 'stack_left' && m.y > this.y).length;
           
           let targetY;
-          if (stopper.isOpen) {
+          const isReleased = stopper.isOpen && this.releaseDelay !== -1 && (Date.now() - stopperOpenTime >= this.releaseDelay);
+          
+          if (isReleased) {
             targetY = h * 1.1; 
           } else {
             const sideHeight = h * 0.47;
@@ -478,22 +576,29 @@
             this.vy += gravity;
             this.y += this.vy;
           } else {
+            if (Math.abs(this.y - targetY) > 1 && this.vy > 0.5) {
+              playWoodSound(0.3); 
+            }
             this.y += (targetY - this.y) * 0.3;
             this.vy = 0;
             this.vx = 0;
           }
 
-          if (stopper.isOpen) {
+          if (isReleased) {
             this.status = 'dropping_bottom';
+            playWoodSoundForced(0.5); // 【新】落下開始時にコトッと移動開始の小気味よいトリガー音を鳴らす
           }
         }
 
+        // 【新：時差落下トリガー】右側
         else if (this.status === 'stack_right') {
           const slotX = w * 0.78; 
           const index = marbles.filter(m => m.status === 'stack_right' && m.y > this.y).length;
           
           let targetY;
-          if (stopper.isOpen) {
+          const isReleased = stopper.isOpen && this.releaseDelay !== -1 && (Date.now() - stopperOpenTime >= this.releaseDelay);
+          
+          if (isReleased) {
             targetY = h * 1.1; 
           } else {
             const sideHeight = h * 0.47;
@@ -507,13 +612,17 @@
             this.vy += gravity;
             this.y += this.vy;
           } else {
+            if (Math.abs(this.y - targetY) > 1 && this.vy > 0.5) {
+              playWoodSound(0.3); 
+            }
             this.y += (targetY - this.y) * 0.3;
             this.vy = 0;
             this.vx = 0;
           }
 
-          if (stopper.isOpen) {
+          if (isReleased) {
             this.status = 'dropping_bottom';
+            playWoodSoundForced(0.5); // 【新】移動開始トリガー音
           }
         }
 
@@ -530,6 +639,12 @@
             const alignedCount = marbles.filter(m => m.status === 'aligned_bottom').length - 1;
             this.alignedIndex = alignedCount;
             createParticle(this.x, this.y, '#3b82f6', 'smoke');
+            
+            // 【新】下部トレイに着地した瞬間、連続再生防止を無視してコトッと正確に音を鳴らす
+            if (!this.hasPlayedBottomSound) {
+              playWoodSoundForced(0.7); 
+              this.hasPlayedBottomSound = true;
+            }
           }
         }
 
@@ -575,6 +690,8 @@
 
     // ゲームリセット
     function resetGame() {
+      stopObservingBoard();
+
       marbles = [];
       particles = [];
       inputLeft = null;
@@ -586,7 +703,10 @@
       document.getElementById('valTotal').textContent = '?';
 
       // ポップアップ消去
-      document.getElementById('clearOverlay').className = "absolute inset-0 z-40 bg-amber-900/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-700";
+      const overlay = document.getElementById('clearOverlay');
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+      overlay.classList.remove('opacity-100', 'pointer-events-auto');
+      
       document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-75 transition-transform duration-700";
 
       // スタート画面の復活
@@ -606,6 +726,8 @@
 
     // 1〜10個のビー玉をランダムに決定して開始する処理
     function startRandomMarbles() {
+      playWoodSound(0.01);
+      
       const randomCount = Math.floor(Math.random() * 10) + 1;
       selectMarbleCount(randomCount);
     }
@@ -648,7 +770,6 @@
       const boxRight = document.getElementById('boxRight');
       const boxTotal = document.getElementById('boxTotal');
 
-      // 状態に応じたガイド点滅の追加・削除
       if (currentState === STATE.INPUT_HALVES) {
         if (inputLeft === null) {
           boxLeft.classList.add('pulse-yellow');
@@ -693,7 +814,7 @@
         guide.innerHTML = "🔔 ピンクの しきり板 を タップして はずしてみよう！";
         document.getElementById('stopperTouchGuide').classList.remove('hidden');
       } else if (currentState === STATE.RELEASING) {
-        guide.innerHTML = "🌈 ザザーッ！ ビー玉が 下に ならぶよ！";
+        guide.innerHTML = "🌈 ひとつずつ ビー玉が 下に おちていくよ！";
         document.getElementById('stopperTouchGuide').classList.add('hidden');
       } else if (currentState === STATE.INPUT_TOTAL) {
         guide.innerHTML = "✏️ ぜんぶで なんこ になったかな？<br>いちばん <span class='text-purple-600 font-bold'>うえの ひかっている むらさきのしかく</span> を タップして ね！";
@@ -749,7 +870,7 @@
       updateGlowStyles();
     }
 
-    // 左右の入力が合っているかチェック【修正：上書き時にすべての必須クラスを維持】
+    // 左右の入力が合っているかチェック
     function checkHalves() {
       const isLeftCorrect = inputLeft === leftCount;
       const isRightCorrect = inputRight === rightCount;
@@ -779,7 +900,7 @@
       }
     }
 
-    // 合計の入力チェック【修正：上書き時にすべての必須クラスを維持】
+    // 合計の入力チェック
     function checkTotal() {
       const expectedTotal = leftCount + rightCount;
       const isCorrect = inputTotal === expectedTotal;
@@ -795,7 +916,11 @@
         document.getElementById('mathSummaryText').innerHTML = `${leftCount} + ${rightCount} = <span class="text-green-600 text-3xl font-black ml-1">${expectedTotal}</span>`;
         
         setTimeout(() => {
-          document.getElementById('clearOverlay').className = "absolute inset-0 z-40 bg-amber-900/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 opacity-100 transition-all duration-700 pointer-events-auto";
+          // ダイアログを表示する際、確実に非表示用クラスを削除し、表示用クラスを追加
+          const overlay = document.getElementById('clearOverlay');
+          overlay.classList.remove('opacity-0', 'pointer-events-none');
+          overlay.classList.add('opacity-100', 'pointer-events-auto');
+          
           document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-100 transition-transform duration-700";
           
           for (let i = 0; i < 50; i++) {
@@ -819,6 +944,43 @@
       }
     }
 
+    function hideOverlayToObserve() {
+      playWoodSound(0.2);
+      // ダイアログを100%確実に非表示にする
+      const overlay = document.getElementById('clearOverlay');
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+      overlay.classList.remove('opacity-100', 'pointer-events-auto');
+      
+      // 透明な観察シールドを有効化（z-50で一番手前に出し、タッチ抜けも完全ガード）
+      const shield = document.getElementById('observeShield');
+      shield.classList.remove('hidden');
+
+      // ガイダンスバナーを表示
+      const banner = document.getElementById('observeBanner');
+      banner.style.opacity = "1";
+    }
+
+    function restoreOverlayAfterObserving() {
+      playWoodSound(0.2);
+      // バナーを隠す
+      const banner = document.getElementById('observeBanner');
+      banner.style.opacity = "0";
+
+      // 観察シールドを隠す
+      const shield = document.getElementById('observeShield');
+      shield.classList.add('hidden');
+
+      // お祝いダイアログを100%確実に再表示する
+      const overlay = document.getElementById('clearOverlay');
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100', 'pointer-events-auto');
+    }
+
+    function stopObservingBoard() {
+      document.getElementById('observeBanner').style.opacity = "0";
+      document.getElementById('observeShield').classList.add('hidden');
+    }
+
     // 仕切り板タップ処理
     document.getElementById('pinkStopper').addEventListener('click', () => {
       if (currentState === STATE.READY_RELEASE) {
@@ -827,8 +989,24 @@
         updateGuideMessage();
         updateGlowStyles();
         createParticle(canvas.width * 0.5, stopper.y, '#ec4899', 'smoke');
+        playWoodSoundForced(1.0); // レバーが引かれるコトッという音
+
+        stopperOpenTime = Date.now();
+
+        // 【新：順次落下ロジック】
+        // 左右の筒にスタックされているすべてのビー玉をあつめ、下（y座標が大きい、物理的に一番下のボール）から順にソートします
+        const stackMarbles = marbles.filter(m => m.status === 'stack_left' || m.status === 'stack_right');
+        stackMarbles.sort((a, b) => b.y - a.y);
+
+        // 各ビー玉に対して、400ms（0.4秒）ずつの時間差遅延を割り当てます
+        stackMarbles.forEach((marble, idx) => {
+          marble.releaseDelay = idx * 400; 
+          marble.hasPlayedBottomSound = false; // 音声再生用フラグをクリア
+        });
+
+        // ビー玉の順次落下をすべて見届けるためのセーフティタイマー（球数 * 400ms + 着地までの余裕2秒に自動調節）
+        const safetyTime = (stackMarbles.length * 400) + 2000;
         
-        // ビー玉の落下判定漏れを防ぐセーフティタイマー（1.5秒後に強制的に整列して合計入力モードへ移行）
         setTimeout(() => {
           if (currentState === STATE.RELEASING) {
             marbles.forEach((marble, idx) => {
@@ -839,7 +1017,7 @@
             updateGuideMessage();
             updateGlowStyles();
           }
-        }, 1500);
+        }, safetyTime);
       }
     });
 
@@ -878,7 +1056,9 @@
         if (marble.status === 'stack_right') {
           tempRightCount++;
         }
-        if (marble.status === 'dropping_bottom') {
+        
+        // 順次落下中もすべてのビー玉が底の整列状態になるまで完了を待つ
+        if (marble.status === 'dropping_bottom' || (stopper.isOpen && marble.status.startsWith('stack'))) {
           allMarblesSettled = false;
         }
       });
@@ -931,6 +1111,32 @@
         
         ctx.fillText(i + 1, w * 0.102, blockY + stepY / 2);
         ctx.fillText(i + 1, w * 0.898, blockY + stepY / 2);
+
+        // 【新：くっきり白丸の描画】対応した入力値の周りに手書き風の白丸＋黒フチ影を描画
+        ctx.save();
+        if (inputLeft !== null && inputLeft === (i + 1)) {
+          ctx.strokeStyle = '#ffffff'; 
+          ctx.lineWidth = 5;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 2;
+          ctx.beginPath();
+          ctx.arc(w * 0.102, blockY + stepY / 2, Math.max(12, w * 0.045), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (inputRight !== null && inputRight === (i + 1)) {
+          ctx.strokeStyle = '#ffffff'; 
+          ctx.lineWidth = 5;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 2;
+          ctx.beginPath();
+          ctx.arc(w * 0.898, blockY + stepY / 2, Math.max(12, w * 0.045), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
 
         ctx.strokeStyle = 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 1;
