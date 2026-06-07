@@ -48,15 +48,29 @@
       background-color: #f3e8ff;
     }
     
-    /* アニメーション */
-    @keyframes bounce-slow {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+    /* 入力待ちの時にピカピカ光るパルスアニメーション */
+    @keyframes pulse-glowing-yellow {
+      0%, 100% { box-shadow: 0 0 0 0px rgba(234, 179, 8, 0.8); }
+      50% { box-shadow: 0 0 0 14px rgba(234, 179, 8, 0); }
     }
-    .bounce-slow {
-      animation: bounce-slow 2s infinite ease-in-out;
+    @keyframes pulse-glowing-blue {
+      0%, 100% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.8); }
+      50% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
     }
-    
+    @keyframes pulse-glowing-purple {
+      0%, 100% { box-shadow: 0 0 0 0px rgba(168, 85, 247, 0.9); }
+      50% { box-shadow: 0 0 0 16px rgba(168, 85, 247, 0); }
+    }
+    .pulse-yellow {
+      animation: pulse-glowing-yellow 1.5s infinite ease-in-out;
+    }
+    .pulse-blue {
+      animation: pulse-glowing-blue 1.5s infinite ease-in-out;
+    }
+    .pulse-purple {
+      animation: pulse-glowing-purple 1.5s infinite ease-in-out;
+    }
+
     /* 煙や雲のゆらゆら */
     @keyframes float-cloud {
       0%, 100% { transform: translateX(0px); }
@@ -64,6 +78,13 @@
     }
     .float-cloud {
       animation: float-cloud 6s infinite ease-in-out;
+    }
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .bounce-slow {
+      animation: bounce-slow 2s infinite ease-in-out;
     }
   </style>
 </head>
@@ -90,7 +111,7 @@
     </div>
   </div>
 
-  <!-- ゲームメインエリア：高さが0に潰れないよう最小高さを確実にCSSで指定 -->
+  <!-- ゲームメインエリア -->
   <div class="w-full max-w-md aspect-[3/4] min-h-[420px] relative flex-grow flex items-center justify-center py-2">
     <!-- 外側の木枠 -->
     <div class="wood-frame w-full h-full rounded-3xl p-3 md:p-4 flex flex-col relative overflow-hidden">
@@ -114,7 +135,7 @@
         <!-- 物理アニメーション用キャンバス -->
         <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-10"></canvas>
 
-        <!-- UI要素レイヤー (Canvasの上に重ねる) -->
+        <!-- UI要素レイヤー -->
         <div class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2">
           
           <!-- 上部：ビー玉投入セレクトエリア -->
@@ -135,7 +156,7 @@
             <!-- 家の屋根の装飾（CSSで表現） -->
             <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[45px] border-r-[45px] border-b-[16px] border-l-transparent border-r-transparent border-b-amber-800"></div>
             
-            <!-- 上部：合計カード -->
+            <!-- 上部：合計カード（?マーク）【修正：確実に反応する直接onclickを設定】 -->
             <div class="flex justify-center mt-2">
               <div id="boxTotal" onclick="openKeypad('total')" class="w-12 h-12 md:w-14 md:h-14 num-box-purple rounded-xl flex items-center justify-center text-2xl md:text-3xl font-black text-purple-700 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30">
                 <span id="valTotal">?</span>
@@ -151,7 +172,7 @@
               </svg>
             </div>
 
-            <!-- 下部：左右のカード -->
+            <!-- 下部：左右のカード【修正：確実に反応する直接onclickを設定】 -->
             <div class="flex justify-between px-1 mb-2">
               <!-- 左 -->
               <div id="boxLeft" onclick="openKeypad('left')" class="w-11 h-11 md:w-12 md:h-12 num-box-yellow rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-amber-800 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30">
@@ -176,7 +197,7 @@
             <div id="stopperTouchGuide" class="hidden absolute right-[10%] -top-12 bg-rose-100 border-2 border-rose-400 text-rose-800 font-black rounded-lg px-2 py-1 text-xs shadow-md animate-bounce">
               ここを タップ！ 👇
             </div>
-            <!-- ピンクのバー本体 -->
+            <!-- ピンク of バー本体 -->
             <div class="w-full h-full bg-pink-500/20 active:bg-pink-500/40 transition-colors"></div>
           </div>
 
@@ -199,7 +220,7 @@
   </div>
 
   <!-- タブレット/スマホ用の数字キーパッド -->
-  <div id="keypad" class="w-full max-w-md bg-amber-100 border-t-4 border-amber-300 p-3 rounded-t-3xl shadow-2xl transition-all duration-300 translate-y-full fixed bottom-0 left-1/2 -translate-x-1/2 z-50">
+  <div id="keypad" class="w-full max-w-md bg-amber-100 border-t-4 border-amber-300 p-3 rounded-t-3xl shadow-2xl transition-all duration-300 translate-y-full fixed bottom-0 left-1/2 -translate-x-1/2 z-[100]">
     <div class="flex justify-between items-center mb-2 px-1">
       <span id="keypadTitle" class="font-bold text-amber-900 text-base">すうじを えらぼう</span>
       <button onclick="closeKeypad()" class="text-amber-800 hover:text-amber-950 font-black text-sm bg-amber-200 hover:bg-amber-300 px-3 py-1 rounded-full">
@@ -564,10 +585,6 @@
       document.getElementById('valRight').textContent = '?';
       document.getElementById('valTotal').textContent = '?';
 
-      document.getElementById('boxLeft').className = 'w-11 h-11 md:w-12 md:h-12 num-box-yellow rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-amber-800 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30';
-      document.getElementById('boxRight').className = 'w-11 h-11 md:w-12 md:h-12 num-box-blue rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-blue-800 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30';
-      document.getElementById('boxTotal').className = 'w-12 h-12 md:w-14 md:h-14 num-box-purple rounded-xl flex items-center justify-center text-2xl md:text-3xl font-black text-purple-700 shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30';
-
       // ポップアップ消去
       document.getElementById('clearOverlay').className = "absolute inset-0 z-40 bg-amber-900/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-700";
       document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-75 transition-transform duration-700";
@@ -583,6 +600,7 @@
       initBoardLayout();
       currentState = STATE.SELECT;
       updateGuideMessage();
+      updateGlowStyles();
     }
     document.getElementById('resetBtn').addEventListener('click', resetGame);
 
@@ -608,6 +626,7 @@
       }, 500);
 
       updateGuideMessage();
+      updateGlowStyles();
 
       // ビー玉を投入
       let dropped = 0;
@@ -623,6 +642,40 @@
       }, 500);
     }
 
+    // 入力枠のピカピカ光るアニメーションクラスの動的更新
+    function updateGlowStyles() {
+      const boxLeft = document.getElementById('boxLeft');
+      const boxRight = document.getElementById('boxRight');
+      const boxTotal = document.getElementById('boxTotal');
+
+      // 状態に応じたガイド点滅の追加・削除
+      if (currentState === STATE.INPUT_HALVES) {
+        if (inputLeft === null) {
+          boxLeft.classList.add('pulse-yellow');
+        } else {
+          boxLeft.classList.remove('pulse-yellow');
+        }
+        if (inputRight === null) {
+          boxRight.classList.add('pulse-blue');
+        } else {
+          boxRight.classList.remove('pulse-blue');
+        }
+        boxTotal.classList.remove('pulse-purple');
+      } else if (currentState === STATE.INPUT_TOTAL) {
+        boxLeft.classList.remove('pulse-yellow');
+        boxRight.classList.remove('pulse-blue');
+        if (inputTotal === null) {
+          boxTotal.classList.add('pulse-purple');
+        } else {
+          boxTotal.classList.remove('pulse-purple');
+        }
+      } else {
+        boxLeft.classList.remove('pulse-yellow');
+        boxRight.classList.remove('pulse-blue');
+        boxTotal.classList.remove('pulse-purple');
+      }
+    }
+
     // ガイドメッセージの更新
     function updateGuideMessage() {
       const guide = document.getElementById('guideText');
@@ -635,10 +688,7 @@
       } else if (currentState === STATE.DROP) {
         guide.innerHTML = "🍭 コロコロ... どっちに おちるかな？";
       } else if (currentState === STATE.INPUT_HALVES) {
-        guide.innerHTML = "✏️ 左右の部屋の ビー玉は なんこ？<br><span class='text-amber-600 font-bold'>きいろ</span> と <span class='text-blue-600 font-bold'>みずいろ</span> の しかくを タップして すうじを いれてね！";
-        hand.classList.remove('hidden');
-        hand.style.left = "42%";
-        hand.style.top = "60%";
+        guide.innerHTML = "✏️ 左右の部屋の ビー玉は なんこ？<br><span class='text-amber-600 font-bold'>ピカピカ ひかっている ところ</span> を タップして すうじを いれてね！";
       } else if (currentState === STATE.READY_RELEASE) {
         guide.innerHTML = "🔔 ピンクの しきり板 を タップして はずしてみよう！";
         document.getElementById('stopperTouchGuide').classList.remove('hidden');
@@ -646,10 +696,7 @@
         guide.innerHTML = "🌈 ザザーッ！ ビー玉が 下に ならぶよ！";
         document.getElementById('stopperTouchGuide').classList.add('hidden');
       } else if (currentState === STATE.INPUT_TOTAL) {
-        guide.innerHTML = "✏️ ぜんぶで なんこ になったかな？<br>いちばん <span class='text-purple-600 font-bold'>うえの むらさきの しかく（？マーク）</span> を タップして ね！";
-        hand.classList.remove('hidden');
-        hand.style.left = "50%";
-        hand.style.top = "38%";
+        guide.innerHTML = "✏️ ぜんぶで なんこ になったかな？<br>いちばん <span class='text-purple-600 font-bold'>うえの ひかっている むらさきのしかく</span> を タップして ね！";
       } else if (currentState === STATE.COMPLETE) {
         guide.innerHTML = "🎉 おめでとう！ かんぺきだね！ ✨";
       }
@@ -699,22 +746,29 @@
       }
 
       closeKeypad();
+      updateGlowStyles();
     }
 
-    // 左右の入力が合っているかチェック
+    // 左右の入力が合っているかチェック【修正：上書き時にすべての必須クラスを維持】
     function checkHalves() {
       const isLeftCorrect = inputLeft === leftCount;
       const isRightCorrect = inputRight === rightCount;
 
+      const boxLeft = document.getElementById('boxLeft');
+      const boxRight = document.getElementById('boxRight');
+
+      const baseClassesLeft = 'w-11 h-11 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl font-black shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30';
+      const baseClassesRight = 'w-11 h-11 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl font-black shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30';
+
       if (inputLeft !== null) {
-        document.getElementById('boxLeft').className = isLeftCorrect 
-          ? 'w-11 h-11 md:w-12 md:h-12 num-box-green rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-green-700 shadow-inner pointer-events-auto z-30'
-          : 'w-11 h-11 md:w-12 md:h-12 num-box-yellow rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-rose-600 shadow-inner border-rose-500 bg-rose-50 pointer-events-auto z-30';
+        boxLeft.className = isLeftCorrect 
+          ? `${baseClassesLeft} num-box-green text-green-700`
+          : `${baseClassesLeft} num-box-yellow text-rose-600 border-rose-500 bg-rose-50`;
       }
       if (inputRight !== null) {
-        document.getElementById('boxRight').className = isRightCorrect 
-          ? 'w-11 h-11 md:w-12 md:h-12 num-box-green rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-green-700 shadow-inner pointer-events-auto z-30'
-          : 'w-11 h-11 md:w-12 md:h-12 num-box-blue rounded-xl flex items-center justify-center text-xl md:text-2xl font-black text-rose-600 shadow-inner border-rose-500 bg-rose-50 pointer-events-auto z-30';
+        boxRight.className = isRightCorrect 
+          ? `${baseClassesRight} num-box-green text-green-700`
+          : `${baseClassesRight} num-box-blue text-rose-600 border-rose-500 bg-rose-50`;
       }
 
       if (isLeftCorrect && isRightCorrect) {
@@ -725,13 +779,16 @@
       }
     }
 
-    // 合計の入力チェック
+    // 合計の入力チェック【修正：上書き時にすべての必須クラスを維持】
     function checkTotal() {
       const expectedTotal = leftCount + rightCount;
       const isCorrect = inputTotal === expectedTotal;
 
+      const boxTotal = document.getElementById('boxTotal');
+      const baseClassesTotal = 'w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center text-2xl md:text-3xl font-black shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all relative pointer-events-auto z-30';
+
       if (isCorrect) {
-        document.getElementById('boxTotal').className = 'w-12 h-12 md:w-14 md:h-14 num-box-green rounded-xl flex items-center justify-center text-2xl md:text-3xl font-black text-green-700 shadow-inner pointer-events-auto z-30';
+        boxTotal.className = `${baseClassesTotal} num-box-green text-green-700`;
         currentState = STATE.COMPLETE;
         updateGuideMessage();
         
@@ -758,7 +815,7 @@
           }
         }, 1000);
       } else {
-        document.getElementById('boxTotal').className = 'w-12 h-12 md:w-14 md:h-14 num-box-purple rounded-xl flex items-center justify-center text-2xl md:text-3xl font-black text-rose-600 shadow-inner border-rose-500 bg-rose-50 pointer-events-auto z-30';
+        boxTotal.className = `${baseClassesTotal} num-box-purple text-rose-600 border-rose-500 bg-rose-50`;
       }
     }
 
@@ -768,6 +825,7 @@
         stopper.isOpen = true;
         currentState = STATE.RELEASING;
         updateGuideMessage();
+        updateGlowStyles();
         createParticle(canvas.width * 0.5, stopper.y, '#ec4899', 'smoke');
         
         // ビー玉の落下判定漏れを防ぐセーフティタイマー（1.5秒後に強制的に整列して合計入力モードへ移行）
@@ -779,6 +837,7 @@
             });
             currentState = STATE.INPUT_TOTAL;
             updateGuideMessage();
+            updateGlowStyles();
           }
         }, 1500);
       }
@@ -790,7 +849,7 @@
       const w = canvas.width;
       const h = canvas.height;
 
-      // 【修正】自己修復：もし画面のレイアウトサイズが突然確定し、Canvasのサイズが不一致になった場合は自動修正する
+      // 自己修復
       const parent = canvas.parentElement;
       if (parent && (canvas.width !== parent.clientWidth || canvas.height !== parent.clientHeight)) {
         if (parent.clientWidth > 10 && parent.clientHeight > 10) {
@@ -829,6 +888,7 @@
         rightCount = tempRightCount;
         currentState = STATE.INPUT_HALVES;
         updateGuideMessage();
+        updateGlowStyles();
       }
 
       if (currentState === STATE.RELEASING) {
@@ -836,6 +896,7 @@
         if (bottomCount === targetTotalMarbles) {
           currentState = STATE.INPUT_TOTAL;
           updateGuideMessage();
+          updateGlowStyles();
         }
       }
 
@@ -1028,9 +1089,8 @@
       }
     }
 
-    // 【最重要】最初のロードおよび起動監視
+    // 最初の起動
     function init() {
-      // 親の高さがまだ未決定（0など）の場合はループで少し待ってリトライする
       const parent = canvas.parentElement;
       if (!parent || parent.clientWidth <= 10 || parent.clientHeight <= 10) {
         setTimeout(init, 10);
@@ -1038,10 +1098,9 @@
       }
       
       resizeCanvas();
-      animate(); // 描画ループ開始
+      animate(); 
     }
 
-    // 複数のライフサイクルイベントにバインド
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       init();
     } else {
