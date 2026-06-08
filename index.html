@@ -151,7 +151,7 @@
               </button>
               
               <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
-              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.07</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.08</p>
             </div>
           </div>
 
@@ -204,6 +204,8 @@
             <!-- ピンク of バー本体 -->
             <div class="wood-stopper w-full h-full bg-pink-500/20 active:bg-pink-500/40 transition-colors"></div>
           </div>
+
+          <div id="releaseTapLayer" class="hidden pointer-events-auto touch-none absolute bottom-[8%] left-0 w-full h-[24%] cursor-pointer z-50 bg-transparent"></div>
 
         </div>
 
@@ -593,6 +595,14 @@
 
     function stopCountingGuide() {
       countingGuide = null;
+    }
+
+    function showReleaseTapLayer() {
+      document.getElementById('releaseTapLayer').classList.remove('hidden');
+    }
+
+    function hideReleaseTapLayer() {
+      document.getElementById('releaseTapLayer').classList.add('hidden');
     }
 
     function getCountingGuideStep() {
@@ -1077,6 +1087,9 @@
       const hand = document.getElementById('handGuide');
 
       hand.classList.add('hidden');
+      if (currentState !== STATE.READY_RELEASE && currentState !== STATE.RELEASING) {
+        hideReleaseTapLayer();
+      }
 
       if (currentState === STATE.SELECT) {
         guide.innerHTML = "🔮 スタートボタンを おしてね！👇";
@@ -1087,6 +1100,7 @@
       } else if (currentState === STATE.READY_RELEASE) {
         guide.innerHTML = "🔔 ピンクの しきり板 を タップして はずしてみよう！";
         document.getElementById('stopperTouchGuide').classList.remove('hidden');
+        showReleaseTapLayer();
       } else if (currentState === STATE.RELEASING) {
         guide.innerHTML = "🌈 ひとつずつ ビー玉が 下に おちていくよ！";
         document.getElementById('stopperTouchGuide').classList.add('hidden');
@@ -1266,6 +1280,7 @@
         stopCountingGuide();
         stopper.isOpen = true;
         currentState = STATE.RELEASING;
+        setTimeout(hideReleaseTapLayer, 250);
         updateGuideMessage();
         updateGlowStyles();
         createParticle(canvas.width * 0.5, stopper.y, '#ec4899', 'smoke');
@@ -1312,6 +1327,8 @@
     document.getElementById('pinkStopper').addEventListener('click', releaseStopper);
     document.getElementById('stopperTouchGuide').addEventListener('pointerdown', releaseStopper);
     document.getElementById('stopperTouchGuide').addEventListener('click', releaseStopper);
+    document.getElementById('releaseTapLayer').addEventListener('pointerdown', releaseStopper);
+    document.getElementById('releaseTapLayer').addEventListener('click', releaseStopper);
 
     // --- メインループ ---
     function animate() {
