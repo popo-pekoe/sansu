@@ -196,9 +196,9 @@
           </div>
 
           <!-- 仕切り板（ピンクのバー）のクリック・タップ検出領域 -->
-          <div id="pinkStopper" class="pointer-events-auto absolute bottom-[14.5%] left-0 w-full h-[3.5%] cursor-pointer z-20 flex justify-center items-center">
+          <div id="pinkStopper" class="pointer-events-auto touch-none absolute bottom-[14.5%] left-0 w-full h-[3.5%] cursor-pointer z-20 flex justify-center items-center">
             <!-- 仕切り引き抜きのガイド手アイコン -->
-            <div id="stopperTouchGuide" class="hidden pointer-events-auto absolute right-[10%] -top-12 bg-rose-100 border-2 border-rose-400 text-rose-800 font-black rounded-lg px-2 py-1 text-xs shadow-md animate-bounce z-40">
+            <div id="stopperTouchGuide" class="hidden pointer-events-auto touch-none absolute right-[10%] -top-12 bg-rose-100 border-2 border-rose-400 text-rose-800 font-black rounded-lg px-2 py-1 text-xs shadow-md animate-bounce z-40">
               ここを タップ！ 👇
             </div>
             <!-- ピンク of バー本体 -->
@@ -960,6 +960,7 @@
 
     // 1〜10個のビー玉をランダムに決定して開始する処理
     function startRandomMarbles() {
+      if (currentState !== STATE.SELECT) return;
       playWoodSound(0.01);
       
       const randomCount = Math.floor(Math.random() * 10) + 1;
@@ -968,6 +969,7 @@
 
     // ビー玉投入選択
     function selectMarbleCount(count) {
+      if (currentState !== STATE.SELECT) return;
       targetTotalMarbles = count;
       currentState = STATE.DROP;
       
@@ -1269,7 +1271,9 @@
     }
 
     // 仕切り板タップ処理
+    document.getElementById('pinkStopper').addEventListener('pointerdown', releaseStopper);
     document.getElementById('pinkStopper').addEventListener('click', releaseStopper);
+    document.getElementById('stopperTouchGuide').addEventListener('pointerdown', releaseStopper);
     document.getElementById('stopperTouchGuide').addEventListener('click', releaseStopper);
 
     // --- メインループ ---
