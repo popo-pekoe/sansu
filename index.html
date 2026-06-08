@@ -151,7 +151,7 @@
               </button>
               
               <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
-              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.06</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.07</p>
             </div>
           </div>
 
@@ -409,6 +409,38 @@
       } catch (e) {}
     }
 
+    function playCountSound(step = 0) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(760 + Math.min(step, 9) * 35, audioCtx.currentTime);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2600, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.16, audioCtx.currentTime + 0.012);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.11);
+
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+      } catch (e) {}
+    }
+
     function hexToRgb(hex) {
       const value = hex.replace('#', '');
       return {
@@ -554,9 +586,9 @@
         side,
         marbles: countingMarbles,
         startedAt: performance.now(),
-        interval: 450
+        interval: 450,
+        lastSoundIndex: -1
       };
-      playWoodSoundForced(0.25);
     }
 
     function stopCountingGuide() {
@@ -571,6 +603,11 @@
 
       if (index >= countingGuide.marbles.length) {
         return null;
+      }
+
+      if (countingGuide.lastSoundIndex !== index) {
+        playCountSound(index);
+        countingGuide.lastSoundIndex = index;
       }
 
       return {
