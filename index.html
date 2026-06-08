@@ -280,6 +280,7 @@
     let currentState = STATE.SELECT;
     let targetTotalMarbles = 0; // ユーザーが指定した球数
     let marbles = [];
+    let ghostMarbles = [];
     let pins = [];
     let particles = [];
     let activeKeypadTarget = null; // 'left', 'right', 'total'
@@ -373,6 +374,67 @@
       } catch (e) {}
     }
 
+    function playSplashSound(volume = 1) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620 + Math.random() * 80, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.16);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1400, audioCtx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.16);
+
+        gainNode.gain.setValueAtTime(volume * 0.08, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } catch (e) {}
+    }
+
+    function hexToRgb(hex) {
+      const value = hex.replace('#', '');
+      return {
+        r: parseInt(value.slice(0, 2), 16),
+        g: parseInt(value.slice(2, 4), 16),
+        b: parseInt(value.slice(4, 6), 16)
+      };
+    }
+
+    function parseColor(color) {
+      if (color.startsWith('rgb')) {
+        const values = color.match(/\d+/g).map(Number);
+        return { r: values[0], g: values[1], b: values[2] };
+      }
+
+      return hexToRgb(color);
+    }
+
+    function mixColor(from, to, amount) {
+      const start = parseColor(from);
+      const end = parseColor(to);
+      const t = Math.max(0, Math.min(1, amount));
+      const r = Math.round(start.r + (end.r - start.r) * t);
+      const g = Math.round(start.g + (end.g - start.g) * t);
+      const b = Math.round(start.b + (end.b - start.b) * t);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -404,6 +466,73 @@
           spin: (Math.random() - 0.5) * 0.1
         });
       }
+    }
+
+    function createSplashParticles(x, y, color) {
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 5,
+          vy: -Math.random() * 4 - 1,
+          r: Math.random() * 3 + 1.5,
+          color: color,
+          alpha: 0.9,
+          decay: Math.random() * 0.025 + 0.025,
+          type: 'smoke',
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.1
+        });
+      }
+    }
+
+    function refreshBottomAlignment() {
+      const ordered = [
+        ...marbles.filter(m => m.status === 'aligned_bottom' && m.group === 'left'),
+        ...marbles.filter(m => m.status === 'aligned_bottom' && m.group === 'right'),
+        ...marbles.filter(m => m.status === 'aligned_bottom' && !m.group)
+      ];
+
+      ordered.forEach((marble, index) => {
+        marble.alignedIndex = index;
+      });
+    }
+
+    function captureGhostMarbles(stackMarbles) {
+      ghostMarbles = stackMarbles.map(marble => ({
+        x: marble.x,
+        y: marble.y,
+        r: marble.r * 0.92,
+        color: marble.targetColor,
+        group: marble.group
+      }));
+    }
+
+    function drawGhostMarbles() {
+      ghostMarbles.forEach(ghost => {
+        ctx.save();
+        ctx.globalAlpha = 0.26;
+
+        const grad = ctx.createRadialGradient(
+          ghost.x - ghost.r * 0.3, ghost.y - ghost.r * 0.3, ghost.r * 0.1,
+          ghost.x, ghost.y, ghost.r
+        );
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.45, ghost.color);
+        grad.addColorStop(1, mixColor(ghost.color, '#111827', 0.18));
+
+        ctx.beginPath();
+        ctx.arc(ghost.x, ghost.y, ghost.r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = ghost.group === 'left' ? '#fef08a' : '#bfdbfe';
+        ctx.lineWidth = Math.max(1.5, ghost.r * 0.18);
+        ctx.setLineDash([3, 3]);
+        ctx.stroke();
+        ctx.restore();
+      });
     }
 
     // ピンの配置の初期化
@@ -446,7 +575,11 @@
         this.vx = (Math.random() - 0.5) * 2;
         this.vy = 0;
         this.r = canvas.height * 0.047 * 0.45; 
-        this.color = '#e2e8f0'; 
+        this.group = null;
+        this.startColor = '#ffffff';
+        this.targetColor = '#ffffff';
+        this.colorBlend = 1;
+        this.color = '#ffffff'; 
         this.bounce = 0.45; 
         this.status = 'falling'; 
         this.alignedIndex = -1;
@@ -455,10 +588,26 @@
         this.hasPlayedBottomSound = false; // 重複発音防止フラグ
       }
 
+      settleIntoGroup(group) {
+        if (this.group) return;
+
+        this.group = group;
+        this.startColor = this.color;
+        this.targetColor = group === 'left' ? '#facc15' : '#60a5fa';
+        this.colorBlend = 0;
+        playSplashSound(0.85);
+        createSplashParticles(this.x, this.y, this.targetColor);
+      }
+
       update() {
         const w = canvas.width;
         const h = canvas.height;
         const gravity = 0.25;
+
+        if (this.colorBlend < 1) {
+          this.colorBlend = Math.min(1, this.colorBlend + 0.08);
+          this.color = mixColor(this.startColor, this.targetColor, this.colorBlend);
+        }
 
         if (this.status === 'falling') {
           this.vy += gravity;
@@ -556,6 +705,7 @@
 
         // 【新：時差落下トリガー】左右のスタック時に、仕切りバーがオープンかつディレイ時間が経過したかを個別に判定する
         else if (this.status === 'stack_left') {
+          this.settleIntoGroup('left');
           const slotX = w * 0.22; 
           const index = marbles.filter(m => m.status === 'stack_left' && m.y > this.y).length;
           
@@ -592,6 +742,7 @@
 
         // 【新：時差落下トリガー】右側
         else if (this.status === 'stack_right') {
+          this.settleIntoGroup('right');
           const slotX = w * 0.78; 
           const index = marbles.filter(m => m.status === 'stack_right' && m.y > this.y).length;
           
@@ -636,9 +787,8 @@
             this.y = bottomY - this.r;
             this.vy = 0;
             this.status = 'aligned_bottom';
-            const alignedCount = marbles.filter(m => m.status === 'aligned_bottom').length - 1;
-            this.alignedIndex = alignedCount;
-            createParticle(this.x, this.y, '#3b82f6', 'smoke');
+            refreshBottomAlignment();
+            createSplashParticles(this.x, this.y, this.targetColor);
             
             // 【新】下部トレイに着地した瞬間、連続再生防止を無視してコトッと正確に音を鳴らす
             if (!this.hasPlayedBottomSound) {
@@ -669,11 +819,10 @@
           this.x, this.y, this.r
         );
 
-        const hue = this.hue;
         grad.addColorStop(0, '#ffffff'); 
-        grad.addColorStop(0.2, `hsl(${hue}, 85%, 75%)`);
-        grad.addColorStop(0.8, `hsl(${hue}, 80%, 45%)`);
-        grad.addColorStop(1, `hsl(${hue}, 90%, 25%)`);
+        grad.addColorStop(0.3, mixColor('#ffffff', this.color, 0.35));
+        grad.addColorStop(0.82, this.color);
+        grad.addColorStop(1, mixColor(this.color, '#111827', 0.28));
 
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
@@ -693,6 +842,7 @@
       stopObservingBoard();
 
       marbles = [];
+      ghostMarbles = [];
       particles = [];
       inputLeft = null;
       inputRight = null;
@@ -913,7 +1063,7 @@
         currentState = STATE.COMPLETE;
         updateGuideMessage();
         
-        document.getElementById('mathSummaryText').innerHTML = `${leftCount} + ${rightCount} = <span class="text-green-600 text-3xl font-black ml-1">${expectedTotal}</span>`;
+        document.getElementById('mathSummaryText').innerHTML = `<span class="text-yellow-500">${leftCount}</span> + <span class="text-blue-500">${rightCount}</span> = <span class="text-green-600 text-3xl font-black ml-1">${expectedTotal}</span>`;
         
         setTimeout(() => {
           // ダイアログを表示する際、確実に非表示用クラスを削除し、表示用クラスを追加
@@ -997,6 +1147,7 @@
         // 左右の筒にスタックされているすべてのビー玉をあつめ、下（y座標が大きい、物理的に一番下のボール）から順にソートします
         const stackMarbles = marbles.filter(m => m.status === 'stack_left' || m.status === 'stack_right');
         stackMarbles.sort((a, b) => b.y - a.y);
+        captureGhostMarbles(stackMarbles);
 
         // 各ビー玉に対して、400ms（0.4秒）ずつの時間差遅延を割り当てます
         stackMarbles.forEach((marble, idx) => {
@@ -1009,10 +1160,10 @@
         
         setTimeout(() => {
           if (currentState === STATE.RELEASING) {
-            marbles.forEach((marble, idx) => {
+            marbles.forEach((marble) => {
               marble.status = 'aligned_bottom';
-              marble.alignedIndex = idx;
             });
+            refreshBottomAlignment();
             currentState = STATE.INPUT_TOTAL;
             updateGuideMessage();
             updateGlowStyles();
@@ -1038,6 +1189,7 @@
       }
 
       drawBoardBackground(w, h);
+      drawGhostMarbles();
 
       let allMarblesSettled = true;
       let tempLeftCount = 0;
