@@ -151,6 +151,7 @@
               </button>
               
               <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.06</p>
             </div>
           </div>
 
@@ -1150,9 +1151,14 @@
         stopperOpenTime = Date.now();
 
         // 【新：順次落下ロジック】
-        // 左右の筒にスタックされているすべてのビー玉をあつめ、下（y座標が大きい、物理的に一番下のボール）から順にソートします
-        const stackMarbles = marbles.filter(m => m.status === 'stack_left' || m.status === 'stack_right');
-        stackMarbles.sort((a, b) => b.y - a.y);
+        // 左の黄色グループをすべて落としてから、右の青グループを落とす
+        const leftStackMarbles = marbles
+          .filter(m => m.status === 'stack_left')
+          .sort((a, b) => b.y - a.y);
+        const rightStackMarbles = marbles
+          .filter(m => m.status === 'stack_right')
+          .sort((a, b) => b.y - a.y);
+        const stackMarbles = [...leftStackMarbles, ...rightStackMarbles];
         captureGhostMarbles(stackMarbles);
 
         // 各ビー玉に対して、400ms（0.4秒）ずつの時間差遅延を割り当てます
