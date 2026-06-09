@@ -151,7 +151,7 @@
               </button>
               
               <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
-              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.09</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.10</p>
             </div>
           </div>
 
@@ -639,6 +639,19 @@
       document.getElementById('releaseTapLayer').classList.add('hidden');
     }
 
+    function setClearOverlayInteractive(isInteractive) {
+      const modal = document.getElementById('clearModal');
+      const buttons = document.querySelectorAll('#clearOverlay button');
+
+      modal.classList.toggle('pointer-events-none', !isInteractive);
+      modal.classList.toggle('pointer-events-auto', isInteractive);
+
+      buttons.forEach(button => {
+        button.disabled = !isInteractive;
+        button.style.pointerEvents = isInteractive ? '' : 'none';
+      });
+    }
+
     function getCountingGuideStep() {
       if (!countingGuide) return null;
 
@@ -1021,7 +1034,8 @@
       overlay.classList.add('opacity-0', 'pointer-events-none');
       overlay.classList.remove('opacity-100', 'pointer-events-auto');
       
-      document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-75 transition-transform duration-700";
+      document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-75 transition-transform duration-700 pointer-events-none";
+      setClearOverlayInteractive(false);
 
       // スタート画面の復活
       const startScreen = document.getElementById('startScreen');
@@ -1247,7 +1261,8 @@
           overlay.classList.remove('opacity-0', 'pointer-events-none');
           overlay.classList.add('opacity-100', 'pointer-events-auto');
           
-          document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-100 transition-transform duration-700";
+          document.getElementById('clearModal').className = "bg-white rounded-3xl p-6 shadow-2xl border-8 border-green-400 text-center max-w-[85%] transform scale-100 transition-transform duration-700 pointer-events-auto";
+          setClearOverlayInteractive(true);
           
           for (let i = 0; i < 50; i++) {
             particles.push({
@@ -1276,6 +1291,7 @@
       const overlay = document.getElementById('clearOverlay');
       overlay.classList.add('opacity-0', 'pointer-events-none');
       overlay.classList.remove('opacity-100', 'pointer-events-auto');
+      setClearOverlayInteractive(false);
       
       // 透明な観察シールドを有効化（z-50で一番手前に出し、タッチ抜けも完全ガード）
       const shield = document.getElementById('observeShield');
@@ -1300,6 +1316,7 @@
       const overlay = document.getElementById('clearOverlay');
       overlay.classList.remove('opacity-0', 'pointer-events-none');
       overlay.classList.add('opacity-100', 'pointer-events-auto');
+      setClearOverlayInteractive(true);
     }
 
     function stopObservingBoard() {
@@ -1685,6 +1702,7 @@
       }
       
       resizeCanvas();
+      setClearOverlayInteractive(false);
       animate(); 
     }
 
