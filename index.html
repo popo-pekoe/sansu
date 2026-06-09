@@ -151,7 +151,7 @@
               </button>
               
               <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
-              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.10</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.11</p>
             </div>
           </div>
 
@@ -295,6 +295,7 @@
     let inputRight = null;
     let inputTotal = null;
     let countingGuide = null;
+    let feedbackMessage = '';
 
     // おもちゃのレイアウト設定
     let leftCount = 0;
@@ -629,6 +630,26 @@
 
     function stopCountingGuide() {
       countingGuide = null;
+    }
+
+    function showFeedbackMessage(message) {
+      feedbackMessage = message;
+      document.getElementById('guideText').innerHTML = message;
+    }
+
+    function clearFeedbackMessage() {
+      feedbackMessage = '';
+    }
+
+    function showHalfFeedback(side, inputValue) {
+      const sideLabel = side === 'left' ? '左' : '右';
+      const sideClass = side === 'left' ? 'text-yellow-600' : 'text-blue-600';
+      showFeedbackMessage(`惜しいね。${sideLabel}のお部屋に <span class="text-rose-600 font-black">${inputValue}</span> を入れたよ。<br><span class="${sideClass} font-black">${sideLabel}のビー玉をタップして、下からもう一度数えてみよう。</span>`);
+      startCountingGuide(side);
+    }
+
+    function showTotalFeedback(inputValue) {
+      showFeedbackMessage(`惜しいね。ぜんぶで <span class="text-rose-600 font-black">${inputValue}</span> を入れたよ。<br><span class="text-purple-600 font-black">下に並んだビー玉を、左からもう一度数えてみよう。</span>`);
     }
 
     function showReleaseTapLayer() {
@@ -1023,6 +1044,7 @@
       inputLeft = null;
       inputRight = null;
       inputTotal = null;
+      clearFeedbackMessage();
       stopCountingGuide();
 
       document.getElementById('valLeft').textContent = '?';
@@ -1134,6 +1156,7 @@
 
     // ガイドメッセージの更新
     function updateGuideMessage() {
+      clearFeedbackMessage();
       const guide = document.getElementById('guideText');
       const hand = document.getElementById('handGuide');
 
@@ -1224,14 +1247,21 @@
         boxLeft.className = isLeftCorrect 
           ? `${baseClassesLeft} num-box-green text-green-700`
           : `${baseClassesLeft} num-box-yellow text-rose-600 border-rose-500 bg-rose-50`;
+        if (!isLeftCorrect && activeKeypadTarget === 'left') {
+          showHalfFeedback('left', inputLeft);
+        }
       }
       if (inputRight !== null) {
         boxRight.className = isRightCorrect 
           ? `${baseClassesRight} num-box-green text-green-700`
           : `${baseClassesRight} num-box-blue text-rose-600 border-rose-500 bg-rose-50`;
+        if (!isRightCorrect && activeKeypadTarget === 'right') {
+          showHalfFeedback('right', inputRight);
+        }
       }
 
       if (isLeftCorrect && isRightCorrect) {
+        clearFeedbackMessage();
         stopCountingGuide();
         currentState = STATE.READY_RELEASE;
         updateGuideMessage();
@@ -1250,6 +1280,7 @@
 
       if (isCorrect) {
         boxTotal.className = `${baseClassesTotal} num-box-green text-green-700`;
+        clearFeedbackMessage();
         currentState = STATE.COMPLETE;
         updateGuideMessage();
         
@@ -1282,6 +1313,7 @@
         }, 1000);
       } else {
         boxTotal.className = `${baseClassesTotal} num-box-purple text-rose-600 border-rose-500 bg-rose-50`;
+        showTotalFeedback(inputTotal);
       }
     }
 
