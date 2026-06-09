@@ -151,7 +151,7 @@
               </button>
               
               <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
-              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.08</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.09</p>
             </div>
           </div>
 
@@ -267,6 +267,8 @@
     木のおもちゃを スマホやタブレットで再現しました
   </footer>
 
+  <div id="debugPanel" class="fixed right-2 bottom-2 z-[200] w-80 max-w-[92vw] rounded bg-slate-950/85 text-lime-100 text-[10px] leading-tight p-2 font-mono pointer-events-none whitespace-pre-wrap shadow-2xl"></div>
+
   <script>
     // --- グローバル変数・定数の定義 (起動時の参照エラーを防ぐためにトップに配置) ---
     const STATE = {
@@ -312,6 +314,38 @@
     let isObservingMode = false;
     let lastSoundTime = 0; // 【新】バウンドSEの連続再生制限（デバウンス）用タイムスタンプ
     let stopperOpenTime = 0; // 【新】ピンクバーを外したときのタイムスタンプ
+    const DEBUG_EVENTS = true;
+    const debugEntries = [];
+
+    function describeEventTarget(event) {
+      if (!event || !event.target) return 'none';
+
+      const target = event.target;
+      if (target.id) return `#${target.id}`;
+      if (target.closest) {
+        const idParent = target.closest('[id]');
+        if (idParent && idParent.id) return `${target.tagName.toLowerCase()} in #${idParent.id}`;
+      }
+      return target.tagName ? target.tagName.toLowerCase() : 'unknown';
+    }
+
+    function debugLog(action, event = null, extra = '') {
+      if (!DEBUG_EVENTS) return;
+
+      const now = new Date();
+      const time = now.toLocaleTimeString('ja-JP', { hour12: false }) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      const target = describeEventTarget(event);
+      const line = `${time} ${action} state=${currentState} target=${target}${extra ? ` ${extra}` : ''}`;
+
+      debugEntries.unshift(line);
+      debugEntries.splice(8);
+
+      const panel = document.getElementById('debugPanel');
+      if (panel) {
+        panel.textContent = debugEntries.join('\n');
+      }
+      console.log('[debug]', line, event || '');
+    }
 
     // --- Web Audio API を使った木材の打撃音生成システム ---
     function playWoodSound(volume = 1) {
@@ -966,7 +1000,8 @@
     }
 
     // ゲームリセット
-    function resetGame() {
+    function resetGame(event = null) {
+      debugLog('resetGame', event);
       stopObservingBoard();
 
       marbles = [];
@@ -1007,6 +1042,7 @@
 
     // 1〜10個のビー玉をランダムに決定して開始する処理
     function startRandomMarbles() {
+      debugLog('startRandomMarbles');
       if (currentState !== STATE.SELECT) return;
       playWoodSound(0.01);
       
@@ -1016,6 +1052,7 @@
 
     // ビー玉投入選択
     function selectMarbleCount(count) {
+      debugLog('selectMarbleCount', null, `count=${count}`);
       if (currentState !== STATE.SELECT) return;
       targetTotalMarbles = count;
       currentState = STATE.DROP;
@@ -1271,12 +1308,14 @@
     }
 
     function releaseStopper(event) {
+      debugLog('releaseStopper:called', event);
       if (event) {
         event.preventDefault();
         event.stopPropagation();
       }
 
       if (currentState === STATE.READY_RELEASE) {
+        debugLog('releaseStopper:run', event);
         stopCountingGuide();
         stopper.isOpen = true;
         currentState = STATE.RELEASING;
@@ -1319,6 +1358,8 @@
             updateGlowStyles();
           }
         }, safetyTime);
+      } else {
+        debugLog('releaseStopper:ignored', event);
       }
     }
 
@@ -1329,6 +1370,16 @@
     document.getElementById('stopperTouchGuide').addEventListener('click', releaseStopper);
     document.getElementById('releaseTapLayer').addEventListener('pointerdown', releaseStopper);
     document.getElementById('releaseTapLayer').addEventListener('click', releaseStopper);
+
+    ['pointerdown', 'click'].forEach(type => {
+      document.addEventListener(type, (event) => {
+        if (!DEBUG_EVENTS) return;
+        const target = describeEventTarget(event);
+        if (currentState !== STATE.SELECT || target.includes('reset') || target.includes('release') || target.includes('start')) {
+          debugLog(`document:${type}`, event);
+        }
+      }, true);
+    });
 
     // --- メインループ ---
     function animate() {
