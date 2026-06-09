@@ -150,8 +150,16 @@
                 スタート！ 🔮
               </button>
               
-              <p class="text-xs text-amber-700 font-semibold mt-4">1〜10この ビー玉が ランダムに おちてくるよ！</p>
-              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.12</p>
+              <div class="mt-4">
+                <p class="text-xs text-amber-700 font-black mb-1">れべる</p>
+                <div class="flex justify-center gap-2">
+                  <button id="levelEasyBtn" onclick="setGameLevel('easy')" class="text-sm font-black px-4 py-2 rounded-full border-2 transition-all active:scale-95">やさしい</button>
+                  <button id="levelNormalBtn" onclick="setGameLevel('normal')" class="text-sm font-black px-4 py-2 rounded-full border-2 transition-all active:scale-95">ふつう</button>
+                </div>
+              </div>
+              
+              <p id="levelDescription" class="text-xs text-amber-700 font-semibold mt-3">1〜5この ビー玉が ランダムに おちてくるよ！</p>
+              <p class="text-[10px] text-amber-600/70 font-bold mt-2 tracking-wide">v1.13</p>
             </div>
           </div>
 
@@ -284,6 +292,11 @@
     let audioCtx = null;
     let currentState = STATE.SELECT;
     let targetTotalMarbles = 0; // ユーザーが指定した球数
+    let gameLevel = 'easy';
+    const LEVEL_LIMITS = {
+      easy: 5,
+      normal: 10
+    };
     let marbles = [];
     let ghostMarbles = [];
     let pins = [];
@@ -317,6 +330,33 @@
     let stopperOpenTime = 0; // 【新】ピンクバーを外したときのタイムスタンプ
     const DEBUG_EVENTS = false;
     const debugEntries = [];
+
+    function getCurrentMarbleLimit() {
+      return LEVEL_LIMITS[gameLevel] || LEVEL_LIMITS.easy;
+    }
+
+    function setGameLevel(level) {
+      if (!LEVEL_LIMITS[level] || currentState !== STATE.SELECT) return;
+      gameLevel = level;
+      updateLevelControls();
+    }
+
+    function updateLevelControls() {
+      const easyBtn = document.getElementById('levelEasyBtn');
+      const normalBtn = document.getElementById('levelNormalBtn');
+      const description = document.getElementById('levelDescription');
+      if (!easyBtn || !normalBtn || !description) return;
+
+      const baseClasses = 'text-sm font-black px-4 py-2 rounded-full border-2 transition-all active:scale-95';
+      const activeClasses = 'bg-amber-500 text-white border-amber-600 shadow-md';
+      const inactiveClasses = 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50';
+
+      easyBtn.className = `${baseClasses} ${gameLevel === 'easy' ? activeClasses : inactiveClasses}`;
+      normalBtn.className = `${baseClasses} ${gameLevel === 'normal' ? activeClasses : inactiveClasses}`;
+      description.textContent = gameLevel === 'easy'
+        ? '1〜5この ビー玉が ランダムに おちてくるよ！'
+        : '1〜10この ビー玉が ランダムに おちてくるよ！';
+    }
 
     function describeEventTarget(event) {
       if (!event || !event.target) return 'none';
@@ -1070,19 +1110,20 @@
       
       initBoardLayout();
       currentState = STATE.SELECT;
+      updateLevelControls();
       updateGuideMessage();
       updateGlowStyles();
     }
     document.getElementById('resetBtn').addEventListener('click', resetGame);
     canvas.addEventListener('pointerdown', handleCanvasTap);
 
-    // 1〜10個のビー玉をランダムに決定して開始する処理
+    // 選んだレベルの範囲でビー玉をランダムに決定して開始する処理
     function startRandomMarbles() {
       debugLog('startRandomMarbles');
       if (currentState !== STATE.SELECT) return;
       playWoodSound(0.01);
       
-      const randomCount = Math.floor(Math.random() * 10) + 1;
+      const randomCount = Math.floor(Math.random() * getCurrentMarbleLimit()) + 1;
       selectMarbleCount(randomCount);
     }
 
@@ -1735,6 +1776,7 @@
       
       resizeCanvas();
       setClearOverlayInteractive(false);
+      updateLevelControls();
       animate(); 
     }
 
